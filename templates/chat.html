@@ -2,7 +2,9 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>AI Чат - Анализ чата</title>
     <style>
         * {
@@ -318,11 +320,106 @@
             margin-bottom: 15px;
             border: 1px solid #fcc;
         }
+        
+        /* Мобильная версия */
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block !important;
+            }
+            
+            .mobile-overlay.active {
+                display: block !important;
+            }
+            
+            .sidebar {
+                width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.mobile-visible {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .top-header {
+                padding: 15px;
+                flex-wrap: wrap;
+            }
+            
+            .chat-container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+            
+            .chat-header {
+                padding: 15px;
+            }
+            
+            .chat-header h2 {
+                font-size: 18px;
+            }
+            
+            .api-key-input {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .api-key-section {
+                flex-direction: column;
+            }
+            
+            .save-key-btn {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+            }
+            
+            .chat-input {
+                font-size: 16px;
+                padding: 15px;
+            }
+            
+            .send-btn {
+                padding: 15px 20px;
+                font-size: 16px;
+                min-height: 50px;
+            }
+            
+            .message-bubble {
+                max-width: 85%;
+                padding: 15px;
+                font-size: 15px;
+            }
+            
+            .suggestion-chip {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+        }
+        
+        /* Улучшения для тапов */
+        button, .suggestion-chip, .save-key-btn, .send-btn {
+            min-height: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        input, textarea {
+            font-size: 16px !important;
+            touch-action: manipulation;
+        }
     </style>
 </head>
 <body>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" style="position: fixed; top: 15px; left: 15px; z-index: 1001; background: #1e3a5f; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: none;">☰</button>
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999;"></div>
     <!-- Сайдбар -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo">
                 <span>ChatAnalyzer</span>
@@ -680,6 +777,34 @@
         document.getElementById('chatInput').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
+        });
+        
+        // Мобильное меню
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('mobile-visible');
+                overlay.classList.toggle('active');
+            }
+        }
+        
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            if (sidebar && overlay) {
+                sidebar.classList.remove('mobile-visible');
+                overlay.classList.remove('active');
+            }
+        }
+        
+        // Закрываем меню при клике на ссылку в мобильной версии
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
+            });
         });
     </script>
 </body>

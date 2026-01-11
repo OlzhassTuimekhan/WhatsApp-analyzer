@@ -2,7 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Анализ WhatsApp чата</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -19,6 +22,38 @@
             display: flex;
         }
         
+        /* Hamburger меню */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background: #1e3a5f;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        
+        .mobile-overlay.active {
+            display: block;
+        }
+        
         /* Сайдбар */
         .sidebar {
             width: 260px;
@@ -30,6 +65,12 @@
             top: 0;
             padding: 20px 0;
             overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
         }
         
         .sidebar-header {
@@ -191,11 +232,25 @@
             padding: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             transition: transform 0.3s, box-shadow 0.3s;
+            touch-action: manipulation;
         }
         
         .stat-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        /* Увеличенные кнопки для тапов */
+        .btn, button, input[type="button"], input[type="submit"] {
+            min-height: 44px;
+            min-width: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        input, textarea, select {
+            font-size: 16px !important; /* Предотвращает zoom на iOS */
+            touch-action: manipulation;
         }
         
         .stat-card h3 {
@@ -595,32 +650,13 @@
             line-height: 1.5;
         }
         
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 200px;
-            }
-            
-            .main-content {
-                margin-left: 200px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .search-bar {
-                width: 200px;
-            }
-            
-            .page-title {
-                font-size: 22px;
-            }
-        }
     </style>
 </head>
 <body>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()"></div>
     <!-- Сайдбар -->
-    <div class="sidebar">
+    <div class="sidebar mobile-hidden" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo">
                 <span></span>
@@ -633,7 +669,7 @@
             <li style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
                 <div style="padding: 0 20px 10px 20px; color: rgba(255,255,255,0.6); font-size: 12px; text-transform: uppercase;">Разделы</div>
             </li>
-            <li><a href="#" onclick="scrollToSection('overview'); return false;"><span></span> Обзор</a></li>
+            <li><a href="#" onclick="scrollToSection('overview'); return false;">📊 Обзор</a></li>
             <li><a href="#" onclick="scrollToSection('activity'); return false;"><span></span> Активность</a></li>
             <li><a href="#" onclick="scrollToSection('participants'); return false;"><span></span> Участники</a></li>
             <li><a href="#" onclick="scrollToSection('emoji'); return false;"><span></span> Эмодзи</a></li>
@@ -680,11 +716,54 @@
             <div class="search-section" id="fileUploadSection">
                 <h2>📁 Загрузка файла чата</h2>
                 <p style="color: #666; margin-bottom: 20px;">Загрузите экспортированный файл чата WhatsApp (.txt) для начала анализа</p>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <input type="file" id="fileInput" accept=".txt" style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
-                    <button class="search-btn" onclick="uploadFile()">Загрузить и проанализировать</button>
+                <div class="file-upload-controls">
+                    <label for="fileInput" class="file-input-label">
+                        <input type="file" id="fileInput" accept=".txt" class="file-input" style="display: none;">
+                        <span class="file-input-button">📁 Нажмите, чтобы выбрать файл (.txt)</span>
+                    </label>
+                    <button class="btn primary" onclick="uploadFile()" style="width: 100%; padding: 15px; font-size: 16px; min-height: 50px;">📤 Загрузить и проанализировать</button>
+                    <button class="btn secondary" onclick="switchToDefault()" style="width: 100%; padding: 15px; font-size: 16px; min-height: 50px;">🔄 Использовать файл по умолчанию</button>
                 </div>
                 <div id="uploadStatus" style="margin-top: 15px;"></div>
+                <style>
+                    .file-input-label {
+                        display: block;
+                        width: 100%;
+                        margin-bottom: 15px;
+                        cursor: pointer;
+                    }
+                    .file-input-button {
+                        display: block;
+                        width: 100%;
+                        padding: 20px;
+                        background: #f0f0f0;
+                        border: 2px dashed #4a90e2;
+                        border-radius: 8px;
+                        text-align: center;
+                        cursor: pointer;
+                        font-size: 16px;
+                        transition: all 0.3s;
+                        color: #1e3a5f;
+                        font-weight: 500;
+                    }
+                    .file-input-button:hover {
+                        background: #e0e0e0;
+                        border-color: #357abd;
+                    }
+                    .file-input-button:active {
+                        background: #d0d0d0;
+                    }
+                    @media (max-width: 768px) {
+                        .file-input-button {
+                            padding: 25px;
+                            font-size: 18px;
+                            min-height: 70px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                    }
+                </style>
             </div>
             
             <!-- Модальное окно для контекста -->
@@ -2175,7 +2254,7 @@
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             
-            statusDiv.innerHTML = '<div style="color: #667eea; padding: 10px;">Загрузка файла...</div>';
+            statusDiv.innerHTML = '<div style="color: #667eea; padding: 15px; background: #e3f2fd; border-radius: 8px; font-size: 16px;">⏳ Загрузка файла...</div>';
             
             try {
                 const response = await fetch('/api/upload', {
@@ -2186,11 +2265,11 @@
                 const data = await response.json();
                 
                 if (data.error) {
-                    statusDiv.innerHTML = `<div style="color: red; padding: 10px;">Ошибка: ${data.error}</div>`;
+                    statusDiv.innerHTML = `<div style="color: red; padding: 15px; background: #fee; border-radius: 8px; font-size: 16px;">❌ Ошибка: ${data.error}</div>`;
                     return;
                 }
                 
-                statusDiv.innerHTML = `<div style="color: green; padding: 10px;">✅ ${data.message}: ${data.filename}</div>`;
+                statusDiv.innerHTML = `<div style="color: green; padding: 15px; background: #e8f5e9; border-radius: 8px; font-size: 16px;">✅ ${data.message}: ${data.filename}</div>`;
                 
                 // Обновляем информацию о файле
                 await updateCurrentFileInfo();
@@ -2209,14 +2288,54 @@
         }
         
         
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.toggle('mobile-visible');
+            sidebar.classList.toggle('mobile-hidden');
+            overlay.classList.toggle('active');
+        }
+        
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.remove('mobile-visible');
+            sidebar.classList.add('mobile-hidden');
+            overlay.classList.remove('active');
+        }
+        
         function scrollToSection(sectionId) {
             const element = document.getElementById(sectionId);
             if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 // Обновляем активный пункт меню
                 document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+                // Закрываем мобильное меню на мобильных устройствах
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
                 event.target.closest('a').classList.add('active');
             }
+        }
+        
+        // Обновляем текст кнопки при выборе файла
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                const fileInputButton = document.querySelector('.file-input-button');
+                if (this.files && this.files.length > 0 && fileInputButton) {
+                    const fileName = this.files[0].name;
+                    fileInputButton.textContent = `📁 Выбран: ${fileName.length > 30 ? fileName.substring(0, 30) + '...' : fileName}`;
+                    fileInputButton.style.background = '#e3f2fd';
+                    fileInputButton.style.borderColor = '#4a90e2';
+                }
+            });
+        }
+        
+        // Закрываем мобильное меню при клике вне его
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', closeMobileMenu);
         }
         
         // Загружаем данные при загрузке страницы
