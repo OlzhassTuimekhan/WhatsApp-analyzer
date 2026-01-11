@@ -1,0 +1,2227 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ WhatsApp чата</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+        }
+        
+        /* Сайдбар */
+        .sidebar {
+            width: 260px;
+            background: #1e3a5f;
+            color: white;
+            min-height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 0 20px 30px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .sidebar-menu li {
+            margin: 5px 0;
+        }
+        
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+        
+        .sidebar-menu a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
+        .sidebar-menu a.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-left-color: #4a90e2;
+        }
+        
+        .sidebar-menu a i {
+            margin-right: 12px;
+            width: 20px;
+        }
+        
+        /* Основной контент */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            min-height: 100vh;
+        }
+        
+        /* Хедер */
+        .top-header {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .search-bar {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 300px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #4a90e2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .logout-btn {
+            padding: 6px 15px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        /* Контент */
+        .content-area {
+            padding: 30px;
+            background: #f5f5f5;
+        }
+        
+        .page-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .page-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 1.5em;
+            padding: 50px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-card .unit {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 5px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container.small {
+            height: 300px;
+        }
+        
+        .top-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .top-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.2s;
+        }
+        
+        .top-item:hover {
+            transform: scale(1.02);
+            background: #e9ecef;
+        }
+        
+        .top-item .emoji {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+        
+        .top-item .text {
+            flex: 1;
+        }
+        
+        .top-item .word {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .top-item .count {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .author-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .author-card {
+            background: #1e3a5f;
+            color: white;
+            border-radius: 8px;
+            padding: 18px;
+            border: 1px solid #2a4a6f;
+        }
+        
+        .author-card h4 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .author-card .stat {
+            margin: 5px 0;
+        }
+        
+        .refresh-btn {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #357abd;
+        }
+        
+        .search-section {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            border-color: #4a90e2;
+        }
+        
+        .search-btn {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        .search-btn:hover {
+            background: #357abd;
+        }
+        
+        .search-results {
+            display: none;
+        }
+        
+        .search-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .search-stat-card {
+            background: #1e3a5f;
+            color: white;
+            border-radius: 8px;
+            padding: 18px;
+            border: 1px solid #2a4a6f;
+        }
+        
+        .search-stat-card h4 {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .search-stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        
+        .match-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .match-item .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .match-item .text {
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .interesting-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .interesting-item .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .interesting-item .author {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .interesting-item .date {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .interesting-item .text {
+            color: #333;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        
+        .interesting-item.clickable {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .interesting-item.clickable:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .match-item {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .match-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .match-item.highlight {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .pagination button {
+            background: white;
+            border: 1px solid #4a90e2;
+            color: #4a90e2;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .pagination button:hover:not(:disabled) {
+            background: #4a90e2;
+            color: white;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination .page-info {
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .context-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .context-modal.active {
+            display: block;
+        }
+        
+        .context-content {
+            background: white;
+            max-width: 900px;
+            margin: 50px auto;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .context-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #1e3a5f;
+        }
+        
+        .context-header h3 {
+            color: #1e3a5f;
+            margin: 0;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .close-btn:hover {
+            background: #c82333;
+        }
+        
+        .context-messages {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .context-message {
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #4a90e2;
+            background: #f8f9fa;
+        }
+        
+        .context-message.target {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .context-message .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .context-message .text {
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            
+            .main-content {
+                margin-left: 200px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-bar {
+                width: 200px;
+            }
+            
+            .page-title {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Сайдбар -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span></span>
+                <span>ChatAnalyzer</span>
+            </div>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="/"><span></span> Анализ</a></li>
+            <li><a href="/chat"><span></span> AI Чат</a></li>
+            <li style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="padding: 0 20px 10px 20px; color: rgba(255,255,255,0.6); font-size: 12px; text-transform: uppercase;">Разделы</div>
+            </li>
+            <li><a href="#" onclick="scrollToSection('overview'); return false;"><span></span> Обзор</a></li>
+            <li><a href="#" onclick="scrollToSection('activity'); return false;"><span></span> Активность</a></li>
+            <li><a href="#" onclick="scrollToSection('participants'); return false;"><span></span> Участники</a></li>
+            <li><a href="#" onclick="scrollToSection('emoji'); return false;"><span></span> Эмодзи</a></li>
+            <li><a href="#" onclick="scrollToSection('words'); return false;"><span></span> Слова</a></li>
+            <li><a href="#" onclick="scrollToSection('search'); return false;"><span></span> Поиск</a></li>
+            <li><a href="#" onclick="scrollToSection('day-analysis'); return false;"><span></span> Анализ дня</a></li>
+            <li><a href="#" onclick="scrollToSection('interesting'); return false;"><span></span> Интересное</a></li>
+            <li><a href="#" onclick="scrollToSection('ghosting'); return false;"><span></span> Ghosting</a></li>
+            <li><a href="#" onclick="scrollToSection('heatmap'); return false;"><span></span> Heatmap</a></li>
+            <li><a href="#" onclick="scrollToSection('semantic'); return false;"><span></span> Семантика</a></li>
+            <li><a href="#" onclick="scrollToSection('messageSeries'); return false;"><span></span> Серии</a></li>
+            <li><a href="#" onclick="scrollToSection('reactionSpeed'); return false;"><span></span> Реакция</a></li>
+            <li><a href="#" onclick="scrollToSection('participantBalance'); return false;"><span></span> Баланс</a></li>
+            <li><a href="#" onclick="scrollToSection('emotional'); return false;"><span></span> Эмоции</a></li>
+            <li><a href="#" onclick="scrollToSection('communicationStyle'); return false;"><span></span> Стиль</a></li>
+            <li><a href="#" onclick="scrollToSection('conflict'); return false;"><span></span> Конфликты</a></li>
+            <li><a href="#" onclick="scrollToSection('seasonality'); return false;"><span></span> Сезонность</a></li>
+        </ul>
+    </div>
+    
+    <!-- Основной контент -->
+    <div class="main-content">
+        <!-- Хедер -->
+        <div class="top-header">
+            <div class="header-left">
+                <input type="text" class="search-bar" placeholder="Поиск..." id="globalSearch">
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <div class="user-avatar">О</div>
+                    <span>Olzhas</span>
+                </div>
+                <button class="logout-btn" onclick="location.reload()">Обновить</button>
+            </div>
+        </div>
+        
+        <!-- Контент -->
+        <div class="content-area">
+            <div id="loading" class="loading" style="display: none;">
+                Загрузка данных... ⏳
+            </div>
+            
+            <!-- Загрузка файла (показывается по умолчанию) -->
+            <div class="search-section" id="fileUploadSection">
+                <h2>📁 Загрузка файла чата</h2>
+                <p style="color: #666; margin-bottom: 20px;">Загрузите экспортированный файл чата WhatsApp (.txt) для начала анализа</p>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="file" id="fileInput" accept=".txt" style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                    <button class="search-btn" onclick="uploadFile()">Загрузить и проанализировать</button>
+                </div>
+                <div id="uploadStatus" style="margin-top: 15px;"></div>
+            </div>
+            
+            <!-- Модальное окно для контекста -->
+            <div id="contextModal" class="context-modal" onclick="if(event.target.id === 'contextModal') closeContext()">
+                <div class="context-content" onclick="event.stopPropagation()">
+                    <div class="context-header">
+                        <h3>📋 Контекст сообщения</h3>
+                        <button class="close-btn" onclick="closeContext()">✕ Закрыть</button>
+                    </div>
+                    <div id="contextMessages" class="context-messages"></div>
+                </div>
+            </div>
+            
+            <!-- Модальное окно для анализа дня -->
+            <div id="dayAnalysisModal" class="context-modal" onclick="if(event.target.id === 'dayAnalysisModal') closeDayAnalysis()">
+                <div class="context-content" style="max-width: 1200px;" onclick="event.stopPropagation()">
+                    <div class="context-header">
+                        <h3 id="dayAnalysisTitle">📅 Анализ дня</h3>
+                        <button class="close-btn" onclick="closeDayAnalysis()">✕ Закрыть</button>
+                    </div>
+                    <div id="dayAnalysisContent" style="max-height: 80vh; overflow-y: auto;"></div>
+                </div>
+            </div>
+            
+            <div id="content" style="display: none;">
+                <div class="page-title">Анализ WhatsApp чата</div>
+                <div class="page-subtitle">Полная статистика и визуализация вашего чата</div>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="refresh-btn" onclick="refreshData()">🔄 Обновить анализ</button>
+                    <button class="refresh-btn" onclick="showFileUpload()" style="background: #28a745;">📁 Загрузить другой файл</button>
+                    <div id="currentFileInfo" style="background: white; padding: 10px 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
+                        <span style="color: #1e3a5f; font-weight: 500; font-size: 14px;">Текущий файл:</span>
+                        <span id="currentFileName" style="color: #666; font-size: 14px;">Загрузка...</span>
+                    </div>
+                </div>
+            
+            <!-- Поиск слова -->
+            <div class="search-section" id="search">
+                <h2>🔍 Поиск слова</h2>
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Введите слово для поиска..." onkeypress="if(event.key==='Enter') searchWord()">
+                    <button class="search-btn" onclick="searchWord()">Найти</button>
+                </div>
+                <div id="searchResults" class="search-results">
+                    <div id="searchStats" class="search-stats"></div>
+                    <div id="searchMatches"></div>
+                    <div id="searchPagination" class="pagination"></div>
+                </div>
+            </div>
+            
+            <!-- Основная статистика -->
+            <div class="section" id="overview">
+                <h2>📈 Общая статистика</h2>
+                <div class="stats-grid" id="basicStats"></div>
+            </div>
+            
+            <!-- Активность по времени -->
+            <div class="section" id="activity">
+                <h2>⏰ Активность по времени</h2>
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="weekdayChart"></canvas>
+                </div>
+                <div class="chart-container small">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Статистика по участникам -->
+            <div class="section" id="participants">
+                <h2>👥 Статистика по участникам</h2>
+                <div id="authorStats"></div>
+            </div>
+            
+            <!-- Топ эмодзи -->
+            <div class="section" id="emoji">
+                <h2>😊 Топ эмодзи/смайликов</h2>
+                <div id="emojiStats"></div>
+                <div class="top-items" id="topEmojis"></div>
+            </div>
+            
+            <!-- Топ слов -->
+            <div class="section" id="words">
+                <h2>📝 Топ слов</h2>
+                <div class="top-items" id="topWords"></div>
+            </div>
+            
+            <!-- Длина сообщений -->
+            <div class="section">
+                <h2>📏 Длина сообщений</h2>
+                <div class="chart-container">
+                    <canvas id="lengthChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Выбор даты для анализа -->
+            <div class="search-section" id="day-analysis">
+                <h2>📅 Анализ дня</h2>
+                <div class="search-box">
+                    <input type="date" id="dateInput" class="search-input">
+                    <button class="search-btn" onclick="analyzeDay()">Анализировать день</button>
+                </div>
+            </div>
+            
+            <!-- Интересная статистика -->
+            <div class="section" id="interesting" style="display: none;">
+                <h2>🌟 Интересные факты</h2>
+                <div id="interestingStats"></div>
+            </div>
+            
+            <!-- Ghosting анализ -->
+            <div class="section" id="ghosting">
+                <h2>👻 Ghosting анализ</h2>
+                <div id="ghostingStats"></div>
+            </div>
+            
+            <!-- Activity Heatmap -->
+            <div class="section" id="heatmap">
+                <h2>🔥 Тепловая карта активности</h2>
+                <div id="heatmapContainer"></div>
+            </div>
+            
+            <!-- Semantic анализ -->
+            <div class="section" id="semantic">
+                <h2>🧠 Семантический анализ</h2>
+                <div id="semanticStats"></div>
+            </div>
+            
+            <!-- Серии сообщений -->
+            <div class="section" id="messageSeries">
+                <h2>📨 Серии сообщений</h2>
+                <div id="messageSeriesStats"></div>
+            </div>
+            
+            <!-- Скорость реакции -->
+            <div class="section" id="reactionSpeed">
+                <h2>⚡ Скорость реакции</h2>
+                <div id="reactionSpeedStats"></div>
+            </div>
+            
+            <!-- Баланс участников -->
+            <div class="section" id="participantBalance">
+                <h2>⚖️ Баланс участников</h2>
+                <div id="participantBalanceStats"></div>
+            </div>
+            
+            <!-- Эмоциональный анализ -->
+            <div class="section" id="emotional">
+                <h2>😊 Эмоциональный анализ</h2>
+                <div id="emotionalStats"></div>
+            </div>
+            
+            <!-- Стиль общения -->
+            <div class="section" id="communicationStyle">
+                <h2>💬 Стиль общения</h2>
+                <div id="communicationStyleStats"></div>
+            </div>
+            
+            <!-- Анализ конфликтов -->
+            <div class="section" id="conflict">
+                <h2>⚔️ Анализ конфликтов</h2>
+                <div id="conflictStats"></div>
+            </div>
+            
+            <!-- Сезонность -->
+            <div class="section" id="seasonality">
+                <h2>📅 Сезонность и динамика</h2>
+                <div id="seasonalityStats"></div>
+            </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let charts = {};
+        let allSearchMatches = [];  // Все найденные сообщения
+        let currentPage = 1;
+        const itemsPerPage = 50;  // Сообщений на странице
+        
+        async function loadData() {
+            try {
+                // Загружаем информацию о текущем файле
+                const fileInfo = await updateCurrentFileInfo();
+                
+                // Если файл не загружен, показываем только форму загрузки
+                if (!fileInfo.is_loaded) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('fileUploadSection').style.display = 'block';
+                    return;
+                }
+                
+                const response = await fetch('/api/analysis');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('loading').innerHTML = 
+                        '<div style="color: red; padding: 20px;">Ошибка: ' + data.error + '</div>';
+                    document.getElementById('fileUploadSection').style.display = 'block';
+                    return;
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                renderAnalysis(data);
+            } catch (error) {
+                document.getElementById('loading').innerHTML = 
+                    '<div style="color: red; padding: 20px;">Ошибка загрузки: ' + error.message + '</div>';
+                document.getElementById('fileUploadSection').style.display = 'block';
+            }
+        }
+        
+        function renderAnalysis(data) {
+            renderBasicStats(data.basic);
+            renderActivityCharts(data.activity);
+            renderAuthorStats(data.basic);
+            renderEmojiStats(data.emoji);
+            renderWordStats(data.words);
+            renderLengthStats(data.message_length, data.basic);
+            if (data.interesting) {
+                renderInterestingStats(data.interesting);
+            }
+            if (data.ghosting) {
+                renderGhostingStats(data.ghosting);
+            }
+            if (data.activity_heatmap) {
+                renderActivityHeatmap(data.activity_heatmap);
+            }
+            if (data.semantic) {
+                renderSemanticAnalysis(data.semantic);
+            }
+            if (data.message_series) {
+                renderMessageSeries(data.message_series);
+            }
+            if (data.reaction_speed) {
+                renderReactionSpeed(data.reaction_speed);
+            }
+            if (data.participant_balance) {
+                renderParticipantBalance(data.participant_balance);
+            }
+            if (data.emotional) {
+                renderEmotionalAnalysis(data.emotional);
+            }
+            if (data.communication_style) {
+                renderCommunicationStyle(data.communication_style);
+            }
+            if (data.conflict) {
+                renderConflictAnalysis(data.conflict);
+            }
+            if (data.seasonality) {
+                renderSeasonality(data.seasonality);
+            }
+        }
+        
+        function renderBasicStats(basic) {
+            const statsHtml = `
+                <div class="stat-card">
+                    <h3>Всего сообщений</h3>
+                    <div class="value">${basic.total_messages.toLocaleString()}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Всего слов</h3>
+                    <div class="value">${basic.total_words.toLocaleString()}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Дней активности</h3>
+                    <div class="value">${basic.days_active}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Сообщений в день</h3>
+                    <div class="value">${basic.messages_per_day.toFixed(1)}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Средняя длина</h3>
+                    <div class="value">${basic.avg_message_length.toFixed(0)}<span class="unit">символов</span></div>
+                </div>
+                <div class="stat-card">
+                    <h3>Среднее слов</h3>
+                    <div class="value">${basic.avg_words_per_message.toFixed(1)}</div>
+                </div>
+            `;
+            document.getElementById('basicStats').innerHTML = statsHtml;
+        }
+        
+        function renderActivityCharts(activity) {
+            // График по часам
+            const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+            if (charts.hourly) charts.hourly.destroy();
+            charts.hourly = new Chart(hourlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: activity.hourly.map(h => h[0] + ':00'),
+                    datasets: [{
+                        label: 'Сообщений',
+                        data: activity.hourly.map(h => h[1]),
+                        borderColor: '#4a90e2',
+                        backgroundColor: '#4a90e2',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const hour = element.index;
+                            showMessagesByHour(hour);
+                        }
+                    },
+                    onHover: (event, elements) => {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                }
+            });
+            
+            // График по дням недели
+            const weekdayCtx = document.getElementById('weekdayChart').getContext('2d');
+            if (charts.weekday) charts.weekday.destroy();
+            charts.weekday = new Chart(weekdayCtx, {
+                type: 'bar',
+                data: {
+                    labels: activity.weekday.map(w => w[0]),
+                    datasets: [{
+                        label: 'Сообщений',
+                        data: activity.weekday.map(w => w[1]),
+                        backgroundColor: '#1e3a5f',
+                        borderColor: '#4a90e2',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const weekdayIndex = element.index;
+                            const weekdayNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+                            alert(`Клик по дню недели: ${weekdayNames[weekdayIndex]}\nДля просмотра сообщений выберите конкретную дату в разделе "Анализ дня"`);
+                        }
+                    },
+                    onHover: (event, elements) => {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                }
+            });
+            
+            // График по месяцам
+            const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+            if (charts.monthly) charts.monthly.destroy();
+            charts.monthly = new Chart(monthlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: activity.monthly.map(m => m[0]),
+                    datasets: [{
+                        label: 'Сообщений',
+                        data: activity.monthly.map(m => m[1]),
+                        backgroundColor: '#f093fb',
+                        borderColor: '#667eea',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+        
+        function renderAuthorStats(basic) {
+            const authors = Object.keys(basic.author_stats);
+            const statsHtml = authors.map(author => {
+                const messages = basic.author_stats[author];
+                const chars = basic.author_chars[author];
+                const percentage = ((messages / basic.total_messages) * 100).toFixed(1);
+                
+                return `
+                    <div class="author-card">
+                        <h4>${author}</h4>
+                        <div class="stat">Сообщений: ${messages.toLocaleString()}</div>
+                        <div class="stat">Символов: ${chars.toLocaleString()}</div>
+                        <div class="stat">Доля: ${percentage}%</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('authorStats').innerHTML = 
+                `<div class="author-stats">${statsHtml}</div>`;
+        }
+        
+        function renderEmojiStats(emoji) {
+            const statsHtml = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Всего эмодзи</h3>
+                        <div class="value">${emoji.total_emojis.toLocaleString()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Уникальных</h3>
+                        <div class="value">${emoji.unique_emojis}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Сообщений с эмодзи</h3>
+                        <div class="value">${emoji.messages_with_emoji.toLocaleString()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Процент использования</h3>
+                        <div class="value">${emoji.emoji_usage_percentage.toFixed(1)}<span class="unit">%</span></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('emojiStats').innerHTML = statsHtml;
+            
+            const topEmojisHtml = emoji.top_emojis.slice(0, 30).map(item => `
+                <div class="top-item">
+                    <span class="emoji">${item[0]}</span>
+                    <div class="text">
+                        <div class="word">Эмодзи</div>
+                    </div>
+                    <div class="count">${item[1]}</div>
+                </div>
+            `).join('');
+            document.getElementById('topEmojis').innerHTML = topEmojisHtml;
+        }
+        
+        function renderWordStats(words) {
+            const topWordsHtml = words.top_words.slice(0, 30).map(item => `
+                <div class="top-item">
+                    <div class="text">
+                        <div class="word">${item[0]}</div>
+                    </div>
+                    <div class="count">${item[1]}</div>
+                </div>
+            `).join('');
+            document.getElementById('topWords').innerHTML = topWordsHtml;
+        }
+        
+        function renderLengthStats(length, basic) {
+            const authors = Object.keys(basic.author_stats);
+            const lengthCtx = document.getElementById('lengthChart').getContext('2d');
+            
+            if (charts.length) charts.length.destroy();
+            charts.length = new Chart(lengthCtx, {
+                type: 'bar',
+                data: {
+                    labels: authors,
+                    datasets: [{
+                        label: 'Средняя длина сообщения (символов)',
+                        data: authors.map(a => length.author_avg_lengths[a] || 0),
+                        backgroundColor: authors.map((_, i) => 
+                            i === 0 ? '#667eea' : '#764ba2'
+                        ),
+                        borderColor: authors.map((_, i) => 
+                            i === 0 ? '#5568d3' : '#653888'
+                        ),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+        
+        async function refreshData() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+            
+            try {
+                await fetch('/api/refresh');
+                await loadData();
+            } catch (error) {
+                document.getElementById('loading').innerHTML = 
+                    '<div style="color: red;">Ошибка обновления: ' + error.message + '</div>';
+            }
+        }
+        
+        async function searchWord() {
+            const word = document.getElementById('searchInput').value.trim();
+            if (!word) {
+                alert('Введите слово для поиска');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div class="loading" style="color: #667eea;">Поиск...</div>';
+            
+            try {
+                const response = await fetch(`/api/search?word=${encodeURIComponent(word)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка: ${data.error}</div>`;
+                    return;
+                }
+                
+                renderSearchResults(data);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка поиска: ${error.message}</div>`;
+            }
+        }
+        
+        function renderSearchResults(data) {
+            const statsHtml = `
+                <div class="search-stat-card">
+                    <h4>Всего использований</h4>
+                    <div class="value">${data.total_occurrences}</div>
+                </div>
+                <div class="search-stat-card">
+                    <h4>В сообщениях</h4>
+                    <div class="value">${data.unique_messages}</div>
+                </div>
+                <div class="search-stat-card">
+                    <h4>Всего найдено</h4>
+                    <div class="value">${data.total_matches_count}</div>
+                </div>
+            `;
+            
+            // Статистика по авторам
+            const authors = Object.keys(data.author_stats);
+            let authorStatsHtml = '';
+            if (authors.length > 0) {
+                authorStatsHtml = '<h3 style="margin: 20px 0 10px 0; color: #667eea;">По участникам:</h3><div class="author-stats">';
+                authors.forEach(author => {
+                    const count = data.author_stats[author];
+                    const percentage = data.author_percentages[author] || 0;
+                    authorStatsHtml += `
+                        <div class="author-card">
+                            <h4>${author}</h4>
+                            <div class="stat">Использований: ${count}</div>
+                            <div class="stat">% сообщений: ${percentage}%</div>
+                        </div>
+                    `;
+                });
+                authorStatsHtml += '</div>';
+            }
+            
+            // График по часам
+            let chartHtml = '';
+            if (data.hour_stats && data.hour_stats.length > 0) {
+                chartHtml = '<div class="chart-container small" style="margin: 20px 0;"><canvas id="searchHourlyChart"></canvas></div>';
+                setTimeout(() => {
+                    const ctx = document.getElementById('searchHourlyChart')?.getContext('2d');
+                    if (ctx) {
+                        if (charts.searchHourly) charts.searchHourly.destroy();
+                        charts.searchHourly = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: data.hour_stats.map(h => h[0] + ':00'),
+                                datasets: [{
+                                    label: 'Использований',
+                                    data: data.hour_stats.map(h => h[1]),
+                                    backgroundColor: '#667eea',
+                                    borderColor: '#764ba2',
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    y: { beginAtZero: true }
+                                }
+                            }
+                        });
+                    }
+                }, 100);
+            }
+            
+            // Сохраняем все сообщения
+            allSearchMatches = data.matches || [];
+            currentPage = 1;
+            
+            // Статистика и графики - сначала создаем структуру HTML
+            document.getElementById('searchResults').innerHTML = 
+                `<div id="searchStats" class="search-stats">${statsHtml}</div>
+                ${authorStatsHtml}
+                ${chartHtml}
+                <h3 style="margin: 20px 0 10px 0; color: #667eea;">Все найденные сообщения (${allSearchMatches.length}):</h3>
+                <div id="searchMatches"></div>
+                <div id="searchPagination" class="pagination"></div>`;
+            
+            // Отрисовываем первую страницу сообщений
+            renderMatchesPage();
+            
+            // Прокручиваем к результатам
+            document.getElementById('searchResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        function renderMatchesPage() {
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = startIdx + itemsPerPage;
+            const pageMatches = allSearchMatches.slice(startIdx, endIdx);
+            
+            const matchesHtml = pageMatches.map((match, idx) => {
+                const date = new Date(match.datetime);
+                const safeDatetime = match.datetime.replace(/'/g, "\\'");
+                return `
+                    <div class="match-item" onclick="showContext('${safeDatetime}')">
+                        <div class="meta">
+                            <strong>${escapeHtml(match.author)}</strong> • ${date.toLocaleString('ru-RU')}
+                            ${match.count > 1 ? ` • использовано ${match.count} раз` : ''}
+                        </div>
+                        <div class="text">${escapeHtml(match.text)}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('searchMatches').innerHTML = matchesHtml || '<div style="text-align: center; padding: 20px; color: #666;">Сообщения не найдены</div>';
+            
+            // Пагинация
+            const totalPages = Math.ceil(allSearchMatches.length / itemsPerPage);
+            let paginationHtml = '';
+            
+            if (totalPages > 1) {
+                paginationHtml = `
+                    <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>◀ Предыдущая</button>
+                    <span class="page-info">Страница ${currentPage} из ${totalPages}</span>
+                    <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Следующая ▶</button>
+                    <div style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                        Показано ${startIdx + 1}-${Math.min(endIdx, allSearchMatches.length)} из ${allSearchMatches.length} сообщений
+                    </div>
+                `;
+            }
+            
+            document.getElementById('searchPagination').innerHTML = paginationHtml;
+        }
+        
+        function changePage(page) {
+            const totalPages = Math.ceil(allSearchMatches.length / itemsPerPage);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderMatchesPage();
+            document.getElementById('searchMatches').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        async function showContext(datetime) {
+            const modal = document.getElementById('contextModal');
+            const messagesDiv = document.getElementById('contextMessages');
+            
+            modal.classList.add('active');
+            messagesDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #667eea;">Загрузка контекста...</div>';
+            
+            try {
+                const response = await fetch(`/api/context?datetime=${encodeURIComponent(datetime)}&context_size=10`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    messagesDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка: ${data.error}</div>`;
+                    return;
+                }
+                
+                const messagesHtml = data.messages.map((msg, idx) => {
+                    const date = new Date(msg.datetime);
+                    const isTarget = idx === data.target_index;
+                    return `
+                        <div class="context-message ${isTarget ? 'target' : ''}">
+                            <div class="meta">
+                                <strong>${msg.author}</strong> • ${date.toLocaleString('ru-RU')}
+                                ${isTarget ? ' <span style="color: #ffc107; font-weight: bold;">[Выбранное сообщение]</span>' : ''}
+                            </div>
+                            <div class="text">${escapeHtml(msg.text)}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                messagesDiv.innerHTML = messagesHtml;
+                
+                // Прокручиваем к выбранному сообщению
+                const targetMsg = messagesDiv.querySelector('.target');
+                if (targetMsg) {
+                    setTimeout(() => {
+                        targetMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+            } catch (error) {
+                messagesDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка загрузки контекста: ${error.message}</div>`;
+            }
+        }
+        
+        function closeContext() {
+            document.getElementById('contextModal').classList.remove('active');
+        }
+        
+        async function analyzeDay() {
+            const dateInput = document.getElementById('dateInput');
+            const date = dateInput.value;
+            
+            if (!date) {
+                alert('Выберите дату');
+                return;
+            }
+            
+            showDayAnalysis(date);
+        }
+        
+        async function showDayAnalysis(date) {
+            const modal = document.getElementById('dayAnalysisModal');
+            const contentDiv = document.getElementById('dayAnalysisContent');
+            const titleDiv = document.getElementById('dayAnalysisTitle');
+            
+            modal.classList.add('active');
+            titleDiv.textContent = `📅 Анализ дня: ${new Date(date + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+            contentDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #667eea;">Загрузка анализа дня...</div>';
+            
+            try {
+                const response = await fetch(`/api/day_analysis?date=${encodeURIComponent(date)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    contentDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка: ${data.error}</div>`;
+                    return;
+                }
+                
+                renderDayAnalysis(data);
+            } catch (error) {
+                contentDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка загрузки анализа: ${error.message}</div>`;
+            }
+        }
+        
+        function renderDayAnalysis(data) {
+            const contentDiv = document.getElementById('dayAnalysisContent');
+            let html = '';
+            
+            // Базовая статистика
+            const basic = data.basic || {};
+            html += `
+                <div class="stats-grid" style="margin-bottom: 30px;">
+                    <div class="stat-card">
+                        <h3>Всего сообщений</h3>
+                        <div class="value">${basic.total_messages || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Всего слов</h3>
+                        <div class="value">${basic.total_words || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Средняя длина</h3>
+                        <div class="value">${(basic.avg_message_length || 0).toFixed(0)}<span class="unit">символов</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Период активности</h3>
+                        <div class="value" style="font-size: 1.2em;">
+                            ${data.first_message_time || '—'} - ${data.last_message_time || '—'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Статистика по участникам
+            if (basic.author_stats) {
+                const authors = Object.keys(basic.author_stats);
+                html += '<h3 style="margin: 20px 0 10px 0; color: #667eea;">👥 По участникам:</h3>';
+                html += '<div class="author-stats">';
+                authors.forEach(author => {
+                    const messages = basic.author_stats[author];
+                    const chars = basic.author_chars[author] || 0;
+                    const percentage = ((messages / basic.total_messages) * 100).toFixed(1);
+                    html += `
+                        <div class="author-card">
+                            <h4>${escapeHtml(author)}</h4>
+                            <div class="stat">Сообщений: ${messages}</div>
+                            <div class="stat">Символов: ${chars}</div>
+                            <div class="stat">Доля: ${percentage}%</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Топ эмодзи
+            if (data.emoji && data.emoji.top_emojis && data.emoji.top_emojis.length > 0) {
+                html += '<h3 style="margin: 30px 0 10px 0; color: #667eea;">😊 Топ эмодзи:</h3>';
+                html += '<div class="top-items">';
+                data.emoji.top_emojis.slice(0, 15).forEach(item => {
+                    html += `
+                        <div class="top-item">
+                            <span class="emoji">${item[0]}</span>
+                            <div class="text"><div class="word">Эмодзи</div></div>
+                            <div class="count">${item[1]}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Топ слов
+            if (data.words && data.words.top_words && data.words.top_words.length > 0) {
+                html += '<h3 style="margin: 30px 0 10px 0; color: #667eea;">📝 Топ слов:</h3>';
+                html += '<div class="top-items">';
+                data.words.top_words.slice(0, 20).forEach(item => {
+                    html += `
+                        <div class="top-item">
+                            <div class="text"><div class="word">${escapeHtml(item[0])}</div></div>
+                            <div class="count">${item[1]}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Активность по часам
+            if (data.activity && data.activity.hourly && data.activity.hourly.length > 0) {
+                html += '<h3 style="margin: 30px 0 10px 0; color: #667eea;">⏰ Активность по часам:</h3>';
+                html += '<div class="chart-container small"><canvas id="dayHourlyChart"></canvas></div>';
+                
+                setTimeout(() => {
+                    const ctx = document.getElementById('dayHourlyChart')?.getContext('2d');
+                    if (ctx) {
+                        if (charts.dayHourly) charts.dayHourly.destroy();
+                        charts.dayHourly = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: data.activity.hourly.map(h => h[0] + ':00'),
+                                datasets: [{
+                                    label: 'Сообщений',
+                                    data: data.activity.hourly.map(h => h[1]),
+                                    backgroundColor: '#4a90e2',
+                                    borderColor: '#1e3a5f',
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    y: { beginAtZero: true }
+                                },
+                                onClick: (event, elements) => {
+                                    if (elements.length > 0) {
+                                        const element = elements[0];
+                                        const hour = element.index;
+                                        const date = data.date;
+                                        showMessagesByHourAndDate(hour, date);
+                                    }
+                                },
+                                onHover: (event, elements) => {
+                                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                                }
+                            }
+                        });
+                    }
+                }, 100);
+            }
+            
+            // Все сообщения дня
+            if (data.messages && data.messages.length > 0) {
+                html += '<h3 style="margin: 30px 0 10px 0; color: #667eea;">💬 Все сообщения дня (${data.messages.length}):</h3>';
+                html += '<div class="context-messages" style="max-height: 400px;">';
+                data.messages.forEach(msg => {
+                    const date = new Date(msg.datetime);
+                    html += `
+                        <div class="context-message">
+                            <div class="meta">
+                                <strong>${escapeHtml(msg.author)}</strong> • ${date.toLocaleString('ru-RU')}
+                            </div>
+                            <div class="text">${escapeHtml(msg.text)}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        function closeDayAnalysis() {
+            document.getElementById('dayAnalysisModal').classList.remove('active');
+        }
+        
+        async function showMessagesByHour(hour) {
+            const modal = document.getElementById('dayAnalysisModal');
+            const contentDiv = document.getElementById('dayAnalysisContent');
+            const titleDiv = document.getElementById('dayAnalysisTitle');
+            
+            modal.classList.add('active');
+            titleDiv.textContent = `💬 Сообщения за ${hour}:00`;
+            contentDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #667eea;">Загрузка сообщений...</div>';
+            
+            try {
+                const response = await fetch(`/api/messages_by_hour?hour=${hour}`);
+                const data = await response.json();
+                
+                renderMessagesByHour(data, hour, null);
+            } catch (error) {
+                contentDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка загрузки: ${error.message}</div>`;
+            }
+        }
+        
+        async function showMessagesByHourAndDate(hour, date) {
+            const modal = document.getElementById('dayAnalysisModal');
+            const contentDiv = document.getElementById('dayAnalysisContent');
+            const titleDiv = document.getElementById('dayAnalysisTitle');
+            
+            modal.classList.add('active');
+            const dateStr = new Date(date + 'T00:00:00').toLocaleDateString('ru-RU');
+            titleDiv.textContent = `💬 Сообщения за ${hour}:00 (${dateStr})`;
+            contentDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #667eea;">Загрузка сообщений...</div>';
+            
+            try {
+                const response = await fetch(`/api/messages_by_hour?hour=${hour}&date=${date}`);
+                const data = await response.json();
+                
+                renderMessagesByHour(data, hour, date);
+            } catch (error) {
+                contentDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка загрузки: ${error.message}</div>`;
+            }
+        }
+        
+        function renderMessagesByHour(data, hour, date) {
+            const contentDiv = document.getElementById('dayAnalysisContent');
+            
+            if (data.error) {
+                contentDiv.innerHTML = `<div style="color: red; padding: 20px;">Ошибка: ${data.error}</div>`;
+                return;
+            }
+            
+            let html = `
+                <div class="stats-grid" style="margin-bottom: 30px;">
+                    <div class="stat-card">
+                        <h3>Всего сообщений</h3>
+                        <div class="value">${data.total_messages}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Время</h3>
+                        <div class="value" style="font-size: 1.5em;">${hour}:00</div>
+                    </div>
+                </div>
+            `;
+            
+            if (data.messages && data.messages.length > 0) {
+                html += '<h3 style="margin: 20px 0 10px 0; color: #1e3a5f;">💬 Сообщения:</h3>';
+                html += '<div class="context-messages" style="max-height: 500px;">';
+                data.messages.forEach(msg => {
+                    const dateObj = new Date(msg.datetime);
+                    html += `
+                        <div class="context-message">
+                            <div class="meta">
+                                <strong>${escapeHtml(msg.author)}</strong> • ${dateObj.toLocaleString('ru-RU')}
+                            </div>
+                            <div class="text">${escapeHtml(msg.text)}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else {
+                html += '<div style="text-align: center; padding: 20px; color: #666;">Сообщения не найдены</div>';
+            }
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        function renderInterestingStats(interesting) {
+            document.getElementById('interesting').style.display = 'block';
+            
+            let html = '';
+            
+            // Самые длинные сообщения
+            if (interesting.longest_messages && interesting.longest_messages.length > 0) {
+                html += '<h3 style="margin: 20px 0 10px 0; color: #667eea;">📏 Самые длинные сообщения:</h3>';
+                interesting.longest_messages.forEach(msg => {
+                    html += `
+                        <div class="interesting-item">
+                            <div class="header">
+                                <span class="author">${msg.author}</span>
+                                <span class="date">${new Date(msg.date).toLocaleDateString('ru-RU')} • ${msg.length} символов</span>
+                            </div>
+                            <div class="text">${escapeHtml(msg.text)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Самые короткие сообщения
+            if (interesting.shortest_messages && interesting.shortest_messages.length > 0) {
+                html += '<h3 style="margin: 20px 0 10px 0; color: #667eea;">✂️ Самые короткие сообщения:</h3>';
+                interesting.shortest_messages.forEach(msg => {
+                    html += `
+                        <div class="interesting-item">
+                            <div class="header">
+                                <span class="author">${msg.author}</span>
+                                <span class="date">${new Date(msg.date).toLocaleDateString('ru-RU')} • ${msg.length} символов</span>
+                            </div>
+                            <div class="text">${escapeHtml(msg.text)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Топ дней по активности
+            if (interesting.top_active_days && interesting.top_active_days.length > 0) {
+                html += '<h3 style="margin: 20px 0 10px 0; color: #667eea;">🔥 Самые активные дни (кликните для анализа):</h3>';
+                interesting.top_active_days.forEach(day => {
+                    const dateStr = new Date(day.date).toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    html += `
+                        <div class="interesting-item clickable" onclick="showDayAnalysis('${day.date}')">
+                            <div class="header">
+                                <span class="author">${dateStr}</span>
+                                <span class="date">${day.messages} сообщений</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Первое и последнее сообщение
+            if (interesting.author_first_message) {
+                html += '<h3 style="margin: 20px 0 10px 0; color: #667eea;">🎬 Первые и последние сообщения:</h3>';
+                Object.keys(interesting.author_first_message).forEach(author => {
+                    const first = interesting.author_first_message[author];
+                    const last = interesting.author_last_message[author];
+                    html += `
+                        <div class="interesting-item">
+                            <div class="header">
+                                <span class="author">${author}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                                <div>
+                                    <strong style="color: #667eea;">Первое сообщение:</strong><br>
+                                    <span style="color: #666; font-size: 0.9em;">${new Date(first.datetime).toLocaleString('ru-RU')}</span><br>
+                                    <span style="color: #333;">${escapeHtml(first.text)}</span>
+                                </div>
+                                <div>
+                                    <strong style="color: #764ba2;">Последнее сообщение:</strong><br>
+                                    <span style="color: #666; font-size: 0.9em;">${new Date(last.datetime).toLocaleString('ru-RU')}</span><br>
+                                    <span style="color: #333;">${escapeHtml(last.text)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Среднее время ответа
+            if (interesting.avg_response_time_minutes > 0) {
+                html += `
+                    <div class="stat-card" style="margin-top: 20px;">
+                        <h3>Среднее время ответа</h3>
+                        <div class="value">${interesting.avg_response_time_minutes.toFixed(1)}<span class="unit">минут</span></div>
+                        <div style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                            Проанализировано ${interesting.total_responses_analyzed} ответов
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('interestingStats').innerHTML = html;
+        }
+        
+        function renderGhostingStats(ghosting) {
+            if (!ghosting || !ghosting.top_ghosting_events || ghosting.top_ghosting_events.length === 0) {
+                document.getElementById('ghostingStats').innerHTML = '<p style="color: #666;">Нет данных о ghosting событиях</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            html += `<div style="margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 10px;">Всего событий ghosting: ${ghosting.total_ghosting_events}</h3>
+            </div>`;
+            
+            // Статистика по участникам
+            if (ghosting.author_stats) {
+                html += '<h3 style="color: #667eea; margin: 20px 0 10px 0;">📊 Статистика по участникам:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">';
+                for (const [author, stats] of Object.entries(ghosting.author_stats)) {
+                    html += `
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.ghosting_count}</div>
+                            <div class="stat-label">${escapeHtml(author)}</div>
+                            <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                                Среднее: ${stats.avg_hours_silent}ч<br>
+                                Макс: ${stats.max_hours_silent}ч
+                            </div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+            }
+            
+            // Топ событий
+            if (ghosting.top_ghosting_events && ghosting.top_ghosting_events.length > 0) {
+                html += '<h3 style="color: #667eea; margin: 20px 0 10px 0;">⏱️ Топ самых долгих периодов молчания:</h3>';
+                ghosting.top_ghosting_events.slice(0, 10).forEach((event, idx) => {
+                    const fromDate = new Date(event.ghosted_from).toLocaleString('ru-RU');
+                    const toDate = new Date(event.responded_at).toLocaleString('ru-RU');
+                    html += `
+                        <div class="interesting-item" style="margin-bottom: 15px;">
+                            <div class="header">
+                                <span class="author">${idx + 1}. ${escapeHtml(event.ghosted_by)} → ${escapeHtml(event.responded_by)}</span>
+                                <span class="date">${event.days_silent} дней (${event.hours_silent} часов)</span>
+                            </div>
+                            <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                                Молчание с: ${fromDate}<br>
+                                Ответ в: ${toDate}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            document.getElementById('ghostingStats').innerHTML = html;
+        }
+        
+        function renderActivityHeatmap(heatmap) {
+            if (!heatmap || !heatmap.heatmap) {
+                document.getElementById('heatmapContainer').innerHTML = '<p style="color: #666;">Нет данных для тепловой карты</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            // Находим максимальное значение для нормализации
+            let maxValue = 0;
+            heatmap.heatmap.forEach(day => {
+                day.hours.forEach(hour => {
+                    maxValue = Math.max(maxValue, hour.count);
+                });
+            });
+            
+            html += '<div style="margin-bottom: 20px;">';
+            html += '<h3 style="color: #667eea; margin-bottom: 10px;">Активность по дням недели и часам</h3>';
+            html += '<div style="display: grid; grid-template-columns: 120px repeat(24, 1fr); gap: 2px; margin-top: 20px; font-size: 11px; overflow-x: auto;">';
+            
+            // Заголовок с часами
+            html += '<div></div>';
+            for (let h = 0; h < 24; h++) {
+                html += `<div style="text-align: center; padding: 5px; background: #f0f0f0; font-weight: bold;">${h}</div>`;
+            }
+            
+            // Данные по дням
+            heatmap.heatmap.forEach(day => {
+                html += `<div style="padding: 10px; background: #f0f0f0; font-weight: bold; text-align: right;">${day.weekday_name}</div>`;
+                day.hours.forEach(hour => {
+                    const intensity = maxValue > 0 ? (hour.count / maxValue) : 0;
+                    const opacity = Math.max(0.1, intensity);
+                    const color = `rgba(102, 126, 234, ${opacity})`;
+                    html += `<div style="padding: 8px; background: ${color}; text-align: center; cursor: pointer; min-width: 20px;" title="${day.weekday_name} ${hour.hour}:00 - ${hour.count} сообщений">${hour.count > 0 ? hour.count : ''}</div>`;
+                });
+            });
+            
+            html += '</div>';
+            html += '<div style="margin-top: 15px; font-size: 12px; color: #666;">';
+            html += '<strong>Самые активные периоды:</strong><br>';
+            if (heatmap.most_active_periods && heatmap.most_active_periods.length > 0) {
+                heatmap.most_active_periods.slice(0, 5).forEach(period => {
+                    html += `${period.weekday} ${period.hour}:00 (${period.count} сообщений)<br>`;
+                });
+            }
+            html += '</div>';
+            html += '</div>';
+            
+            document.getElementById('heatmapContainer').innerHTML = html;
+        }
+        
+        function renderSemanticAnalysis(semantic) {
+            if (!semantic) {
+                document.getElementById('semanticStats').innerHTML = '<p style="color: #666;">Нет данных для семантического анализа</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            // Распределение длины сообщений
+            if (semantic.message_length_distribution) {
+                html += '<h3 style="color: #667eea; margin: 20px 0 10px 0;">📏 Распределение длины сообщений:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
+                const dist = semantic.message_length_distribution;
+                html += `
+                    <div class="stat-card">
+                        <div class="stat-value">${dist.short}</div>
+                        <div class="stat-label">Короткие (&lt;10 символов)</div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">${dist.short_percentage}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${dist.medium}</div>
+                        <div class="stat-label">Средние (10-50 символов)</div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">${dist.medium_percentage}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${dist.long}</div>
+                        <div class="stat-label">Длинные (&gt;50 символов)</div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">${dist.long_percentage}%</div>
+                    </div>
+                `;
+                html += '</div>';
+            }
+            
+            // Стиль общения
+            if (semantic.communication_style) {
+                html += '<h3 style="color: #667eea; margin: 20px 0 10px 0;">💬 Стиль общения:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
+                const style = semantic.communication_style;
+                html += `
+                    <div class="stat-card">
+                        <div class="stat-value">${style.question_messages}</div>
+                        <div class="stat-label">Сообщений с вопросами</div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">${style.question_percentage}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${style.exclamation_messages}</div>
+                        <div class="stat-label">Сообщений с восклицаниями</div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">${style.exclamation_percentage}%</div>
+                    </div>
+                `;
+                html += '</div>';
+            }
+            
+            // Темы
+            if (semantic.topics && Object.keys(semantic.topics).length > 0) {
+                html += '<h3 style="color: #667eea; margin: 20px 0 10px 0;">🎯 Основные темы:</h3>';
+                html += '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+                for (const [topic, count] of Object.entries(semantic.topics)) {
+                    html += `
+                        <div style="background: #f0f0f0; padding: 10px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-weight: bold; color: #667eea;">${escapeHtml(topic)}</span>
+                            <span style="color: #666;">${count} упоминаний</span>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+            }
+            
+            // Время суток
+            if (semantic.time_periods) {
+                html += '<h3 style="color: #667eea; margin: 20px 0 10px 0;">⏰ Активность по времени суток:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
+                const periods = semantic.time_periods;
+                const percentages = semantic.time_periods_percentage || {};
+                for (const [period, count] of Object.entries(periods)) {
+                    html += `
+                        <div class="stat-card">
+                            <div class="stat-value">${count}</div>
+                            <div class="stat-label">${period.charAt(0).toUpperCase() + period.slice(1)}</div>
+                            <div style="font-size: 12px; color: #999; margin-top: 5px;">${percentages[period] || 0}%</div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+            }
+            
+            document.getElementById('semanticStats').innerHTML = html;
+        }
+        
+        function renderMessageSeries(series) {
+            if (!series || !series.author_series || Object.keys(series.author_series).length === 0) {
+                document.getElementById('messageSeriesStats').innerHTML = '<p style="color: #666;">Нет данных о сериях сообщений</p>';
+                return;
+            }
+            let html = '<h3 style="color: #667eea; margin-bottom: 15px;">📊 Статистика по участникам:</h3>';
+            html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">';
+            for (const [author, stats] of Object.entries(series.author_series)) {
+                html += `<div class="stat-card"><h4 style="color: #667eea; margin-bottom: 10px;">${escapeHtml(author)}</h4><div class="stat">Всего серий: <strong>${stats.total_series}</strong></div><div class="stat">Сообщений в сериях: <strong>${stats.total_messages_in_series}</strong></div><div class="stat">Средняя длина серии: <strong>${stats.avg_series_length}</strong></div><div class="stat">Макс. длина: <strong>${stats.max_series_length}</strong></div><div style="margin-top: 10px; font-size: 12px; color: #666;"><div>3-5 сообщений: ${stats.series_distribution['3-5']}</div><div>6-10 сообщений: ${stats.series_distribution['6-10']}</div><div>11-20 сообщений: ${stats.series_distribution['11-20']}</div><div>20+ сообщений: ${stats.series_distribution['20+']}</div></div></div>`;
+            }
+            html += '</div>';
+            document.getElementById('messageSeriesStats').innerHTML = html;
+        }
+        
+        function renderReactionSpeed(reaction) {
+            if (!reaction) {
+                document.getElementById('reactionSpeedStats').innerHTML = '<p style="color: #666;">Нет данных о скорости реакции</p>';
+                return;
+            }
+            let html = '';
+            if (reaction.avg_response_times && Object.keys(reaction.avg_response_times).length > 0) {
+                html += '<h3 style="color: #667eea; margin-bottom: 15px;">⏱️ Среднее время ответа:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">';
+                for (const [author, stats] of Object.entries(reaction.avg_response_times)) {
+                    html += `<div class="stat-card"><h4 style="color: #667eea;">${escapeHtml(author)}</h4><div class="stat-value">${stats.avg_minutes}</div><div class="stat-label">минут (среднее)</div><div style="font-size: 12px; color: #999; margin-top: 5px;">Медиана: ${stats.median_minutes} мин<br>Всего ответов: ${stats.total_responses}</div></div>`;
+                }
+                html += '</div>';
+            }
+            if (reaction.response_distribution && Object.keys(reaction.response_distribution).length > 0) {
+                html += '<h3 style="color: #667eea; margin: 30px 0 15px 0;">📊 Распределение ответов по времени:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">';
+                for (const [author, dist] of Object.entries(reaction.response_distribution)) {
+                    const total = dist.under_5min + dist.under_1hour + dist.under_1day + dist.over_1day;
+                    html += `<div class="stat-card"><h4 style="color: #667eea;">${escapeHtml(author)}</h4><div style="font-size: 14px;"><div>До 5 мин: ${dist.under_5min} (${total > 0 ? (dist.under_5min/total*100).toFixed(1) : 0}%)</div><div>До 1 часа: ${dist.under_1hour} (${total > 0 ? (dist.under_1hour/total*100).toFixed(1) : 0}%)</div><div>До 1 дня: ${dist.under_1day} (${total > 0 ? (dist.under_1day/total*100).toFixed(1) : 0}%)</div><div>Более дня: ${dist.over_1day} (${total > 0 ? (dist.over_1day/total*100).toFixed(1) : 0}%)</div></div></div>`;
+                }
+                html += '</div>';
+            }
+            if (reaction.conversation_starters && Object.keys(reaction.conversation_starters).length > 0) {
+                html += '<h3 style="color: #667eea; margin: 30px 0 15px 0;">🚀 Инициаторы диалогов (после паузы >6ч):</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
+                const sorted = Object.entries(reaction.conversation_starters).sort((a, b) => b[1] - a[1]);
+                for (const [author, count] of sorted) {
+                    html += `<div class="stat-card"><div class="stat-value">${count}</div><div class="stat-label">${escapeHtml(author)}</div></div>`;
+                }
+                html += '</div>';
+            }
+            document.getElementById('reactionSpeedStats').innerHTML = html;
+        }
+        
+        function renderParticipantBalance(balance) {
+            if (!balance || !balance.participants) {
+                document.getElementById('participantBalanceStats').innerHTML = '<p style="color: #666;">Нет данных о балансе участников</p>';
+                return;
+            }
+            let html = '<h3 style="color: #667eea; margin-bottom: 15px;">⚖️ Вклад участников:</h3>';
+            html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">';
+            for (const [author, stats] of Object.entries(balance.participants)) {
+                html += `<div class="stat-card"><h4 style="color: #667eea; margin-bottom: 10px;">${escapeHtml(author)}</h4><div class="stat">Доля сообщений: <strong>${stats.message_percentage}%</strong></div><div class="stat">Доля слов: <strong>${stats.word_percentage}%</strong></div><div class="stat">Доля символов: <strong>${stats.character_percentage}%</strong></div><div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;"><div class="stat">Вопросов: <strong>${stats.questions_count}</strong></div><div class="stat">Утверждений: <strong>${stats.statements_count}</strong></div><div class="stat">Соотношение вопросов: <strong>${stats.question_ratio}%</strong></div></div></div>`;
+            }
+            html += '</div>';
+            document.getElementById('participantBalanceStats').innerHTML = html;
+        }
+        
+        function renderEmotionalAnalysis(emotional) {
+            if (!emotional) {
+                document.getElementById('emotionalStats').innerHTML = '<p style="color: #666;">Нет данных для эмоционального анализа</p>';
+                return;
+            }
+            let html = '';
+            if (emotional.tense_days && emotional.tense_days.length > 0) {
+                html += '<h3 style="color: #667eea; margin-bottom: 15px;">😰 Дни с высокой негативностью (>30%):</h3>';
+                html += '<div style="display: flex; flex-direction: column; gap: 10px;">';
+                emotional.tense_days.slice(0, 10).forEach(day => {
+                    html += `<div class="interesting-item"><div class="header"><span class="author">${new Date(day.date).toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span><span class="date">${day.negative_ratio}% негатива • ${day.total_messages} сообщений</span></div></div>`;
+                });
+                html += '</div>';
+            }
+            if (emotional.topic_emotions && Object.keys(emotional.topic_emotions).length > 0) {
+                html += '<h3 style="color: #667eea; margin: 30px 0 15px 0;">🎯 Эмоции по темам:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">';
+                for (const [topic, emotions] of Object.entries(emotional.topic_emotions)) {
+                    html += `<div class="stat-card"><h4 style="color: #667eea;">${escapeHtml(topic)}</h4><div style="font-size: 14px;">${emotions.positive > 0 ? `<div style="color: green;">😊 Позитив: ${emotions.positive}</div>` : ''}${emotions.negative > 0 ? `<div style="color: red;">😠 Негатив: ${emotions.negative}</div>` : ''}${emotions.anxiety > 0 ? `<div style="color: orange;">😰 Тревога: ${emotions.anxiety}</div>` : ''}</div></div>`;
+                }
+                html += '</div>';
+            }
+            document.getElementById('emotionalStats').innerHTML = html || '<p style="color: #666;">Нет данных для эмоционального анализа</p>';
+        }
+        
+        function renderCommunicationStyle(style) {
+            if (!style || !style.author_styles) {
+                document.getElementById('communicationStyleStats').innerHTML = '<p style="color: #666;">Нет данных о стиле общения</p>';
+                return;
+            }
+            let html = '<h3 style="color: #667eea; margin-bottom: 15px;">💬 Стиль общения по участникам:</h3>';
+            html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">';
+            for (const [author, stats] of Object.entries(style.author_styles)) {
+                html += `<div class="stat-card"><h4 style="color: #667eea; margin-bottom: 10px;">${escapeHtml(author)}</h4><div class="stat">Формальность: <strong>${stats.formality_ratio}%</strong></div><div class="stat">Эмодзи на сообщение: <strong>${stats.emojis_per_message}</strong></div><div class="stat">Использование КАПС: <strong>${stats.caps_usage}</strong></div><div class="stat">Многоточия: <strong>${stats.ellipsis_usage}</strong></div><div class="stat">Восклицания: <strong>${stats.exclamation_usage}</strong></div><div class="stat">Лексическое разнообразие: <strong>${stats.lexical_diversity}%</strong></div>${Object.keys(stats.top_parasite_words).length > 0 ? `<div style="margin-top: 10px; font-size: 12px; color: #666;"><strong>Паразитные слова:</strong><br>${Object.entries(stats.top_parasite_words).map(([word, count]) => `${word} (${count})`).join(', ')}</div>` : ''}</div>`;
+            }
+            html += '</div>';
+            document.getElementById('communicationStyleStats').innerHTML = html;
+        }
+        
+        function renderConflictAnalysis(conflict) {
+            if (!conflict) {
+                document.getElementById('conflictStats').innerHTML = '<p style="color: #666;">Нет данных для анализа конфликтов</p>';
+                return;
+            }
+            let html = '';
+            if (conflict.marker_phrases) {
+                html += '<h3 style="color: #667eea; margin-bottom: 15px;">🔖 Маркерные фразы:</h3>';
+                for (const [category, phrases] of Object.entries(conflict.marker_phrases)) {
+                    if (Object.keys(phrases).length > 0) {
+                        const categoryNames = {'resolution': 'Разрешение', 'tension': 'Напряжение', 'apology': 'Извинения', 'compromise': 'Компромисс'};
+                        html += `<h4 style="color: #764ba2; margin: 20px 0 10px 0;">${categoryNames[category] || category}:</h4>`;
+                        html += '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+                        for (const [phrase, count] of Object.entries(phrases)) {
+                            html += `<div style="background: #f0f0f0; padding: 8px 12px; border-radius: 6px;"><span style="font-weight: bold;">${escapeHtml(phrase)}</span><span style="color: #666; margin-left: 5px;">(${count})</span></div>`;
+                        }
+                        html += '</div>';
+                    }
+                }
+            }
+            if (conflict.apology_stats || conflict.compromise_stats) {
+                html += '<h3 style="color: #667eea; margin: 30px 0 15px 0;">🤝 Извинения и компромиссы:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">';
+                if (conflict.apology_stats) {
+                    for (const [author, count] of Object.entries(conflict.apology_stats)) {
+                        html += `<div class="stat-card"><div class="stat-value">${count}</div><div class="stat-label">${escapeHtml(author)} - Извинения</div></div>`;
+                    }
+                }
+                if (conflict.compromise_stats) {
+                    for (const [author, count] of Object.entries(conflict.compromise_stats)) {
+                        html += `<div class="stat-card"><div class="stat-value">${count}</div><div class="stat-label">${escapeHtml(author)} - Компромиссы</div></div>`;
+                    }
+                }
+                html += '</div>';
+            }
+            document.getElementById('conflictStats').innerHTML = html || '<p style="color: #666;">Нет данных для анализа конфликтов</p>';
+        }
+        
+        function renderSeasonality(seasonality) {
+            if (!seasonality) {
+                document.getElementById('seasonalityStats').innerHTML = '<p style="color: #666;">Нет данных о сезонности</p>';
+                return;
+            }
+            let html = '';
+            if (seasonality.peaks) {
+                html += '<h3 style="color: #667eea; margin-bottom: 15px;">📈 Пики и просадки активности:</h3>';
+                html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">';
+                const peaks = seasonality.peaks;
+                if (peaks.max_week && peaks.max_week.period) {
+                    html += `<div class="stat-card"><div class="stat-value" style="color: green;">${peaks.max_week.messages}</div><div class="stat-label">Макс. неделя: ${peaks.max_week.period}</div></div>`;
+                }
+                if (peaks.min_week && peaks.min_week.period) {
+                    html += `<div class="stat-card"><div class="stat-value" style="color: red;">${peaks.min_week.messages}</div><div class="stat-label">Мин. неделя: ${peaks.min_week.period}</div></div>`;
+                }
+                if (peaks.max_month && peaks.max_month.period) {
+                    html += `<div class="stat-card"><div class="stat-value" style="color: green;">${peaks.max_month.messages}</div><div class="stat-label">Макс. месяц: ${peaks.max_month.period}</div></div>`;
+                }
+                if (peaks.min_month && peaks.min_month.period) {
+                    html += `<div class="stat-card"><div class="stat-value" style="color: red;">${peaks.min_month.messages}</div><div class="stat-label">Мин. месяц: ${peaks.min_month.period}</div></div>`;
+                }
+                html += '</div>';
+            }
+            if (seasonality.weekly_activity && Object.keys(seasonality.weekly_activity).length > 0) {
+                html += '<h3 style="color: #667eea; margin: 30px 0 15px 0;">📅 Активность по неделям:</h3>';
+                html += '<div style="max-height: 300px; overflow-y: auto;"><table style="width: 100%; border-collapse: collapse;"><tr style="background: #f0f0f0;"><th style="padding: 10px; text-align: left;">Неделя</th><th style="padding: 10px; text-align: right;">Сообщений</th></tr>';
+                for (const [week, count] of Object.entries(seasonality.weekly_activity)) {
+                    html += `<tr><td style="padding: 8px;">${week}</td><td style="padding: 8px; text-align: right;">${count}</td></tr>`;
+                }
+                html += '</table></div>';
+            }
+            document.getElementById('seasonalityStats').innerHTML = html || '<p style="color: #666;">Нет данных о сезонности</p>';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function updateCurrentFileInfo() {
+            try {
+                const response = await fetch('/api/current_file');
+                const data = await response.json();
+                document.getElementById('currentFileName').textContent = data.filename;
+                return data;
+            } catch (error) {
+                document.getElementById('currentFileName').textContent = 'Ошибка загрузки';
+                return { is_loaded: false };
+            }
+        }
+        
+        function showFileUpload() {
+            const section = document.getElementById('fileUploadSection');
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const statusDiv = document.getElementById('uploadStatus');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                statusDiv.innerHTML = '<div style="color: red; padding: 10px;">Выберите файл для загрузки</div>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            statusDiv.innerHTML = '<div style="color: #667eea; padding: 10px;">Загрузка файла...</div>';
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    statusDiv.innerHTML = `<div style="color: red; padding: 10px;">Ошибка: ${data.error}</div>`;
+                    return;
+                }
+                
+                statusDiv.innerHTML = `<div style="color: green; padding: 10px;">✅ ${data.message}: ${data.filename}</div>`;
+                
+                // Обновляем информацию о файле
+                await updateCurrentFileInfo();
+                
+                // Скрываем форму загрузки и показываем загрузку анализа
+                document.getElementById('fileUploadSection').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('content').style.display = 'none';
+                
+                // Перезагружаем данные
+                await loadData();
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div style="color: red; padding: 10px;">Ошибка загрузки: ${error.message}</div>`;
+            }
+        }
+        
+        
+        function scrollToSection(sectionId) {
+            const element = document.getElementById(sectionId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Обновляем активный пункт меню
+                document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+                event.target.closest('a').classList.add('active');
+            }
+        }
+        
+        // Загружаем данные при загрузке страницы
+        loadData();
+    </script>
+</body>
+</html>
+

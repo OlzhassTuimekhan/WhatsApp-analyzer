@@ -1,0 +1,17 @@
+.env
+.venv
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+*.pyc
